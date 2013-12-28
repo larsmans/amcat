@@ -81,7 +81,10 @@ class Controller(object):
             
     def _save(self, scraper, manager):
         """Saves the articles"""
-        articles, errors = Article.ordered_save(manager.getmodels(), scraper.options['articleset'])
+        articles = manager.getmodels()
+        for a in articles:
+            a.insert_script = scraper.__class__.__name__
+        articles, errors = Article.ordered_save(articles, scraper.options['articleset'])
         for e in errors:
             self.errors.append(ScrapeError(None,None,e))
 
@@ -235,6 +238,7 @@ class ArticleManager(object):
                     artdict['medium'] = Medium.get_or_create(scraper.medium_name)
             if not 'project' in artdict.keys():
                 artdict['project'] = scraper.options['project']
+            artdict['insert_script'] = scraper.__class__.__name__
 
         return artdict
 

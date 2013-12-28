@@ -29,6 +29,7 @@ from amcat.tools import amcates
 from amcat.models.authorisation import Role
 from amcat.models.medium import Medium
 
+from django.contrib.auth.models import User
 from django.db import models, transaction
 from django.db.utils import IntegrityError, DatabaseError
 from django.core.exceptions import ValidationError
@@ -78,6 +79,10 @@ class Article(AmcatModel):
                                db_index=True, blank=True)
     project = models.ForeignKey("amcat.Project", db_index=True, related_name="articles")
     medium = models.ForeignKey(Medium, db_index=True)
+    insert_date = models.DateTimeField(db_column='insertdate', auto_now_add=True, blank = True, null = True)
+    insert_user = models.ForeignKey(User, db_column='insertuser_id', blank = True, null = True)
+    insert_script = models.CharField(db_column='insertscript', max_length=50, blank = True, null = True)
+
 
     class Meta():
         db_table = 'articles'
