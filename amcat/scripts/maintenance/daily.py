@@ -30,6 +30,7 @@ from amcat.scripts.script import Script
 from amcat.models.project import Project    
 from amcat.models.articleset import ArticleSet
 from amcat.models.scraper import Scraper
+from amcat.models.medium import Medium
 
 class DailyForm(forms.Form):
     date = forms.DateField()
@@ -65,8 +66,9 @@ class DailyScript(Script):
         dates = [date - datetime.timedelta(days=n) for n in range(days_back)]
         
         for s in Scraper.objects.filter(run_daily=True, active=True):
+            medium = Medium.get_or_create(s.get_scraper_class().medium_name)
             for day in dates:
-                if not self.satisfied(s, day):
+                if not self.satisfied(s, day, medium):
                     try:
                         s_instance = s.get_scraper(date = day, **options)
                     except Exception:
@@ -76,9 +78,9 @@ class DailyScript(Script):
                     else:
                         yield s_instance
 
-    def satisfied(self, scraper, day):
+    def satisfied(self, scraper, day, medium):
         """Has the scraper successfully run for the given date?"""
-        n_scraped = scraper.n_scraped_articles(from_date = day, to_date = day)
+        n_scraped = scraper.n_scraped_articles(from_date = day, to_date = day, medium = medium)
         if not n_scraped:
             return False #no articles
         elif scraper.statistics == None:

@@ -19,6 +19,8 @@
 
 from amcat.models.scraper import Scraper
 from amcat.models.article import Article
+from amcat.models.medium import Medium
+
 from django.db.models import Count
 from datetime import date, timedelta
 import logging; log = logging.getLogger(__name__)
@@ -27,15 +29,16 @@ import json
 def scraper_ranges(scraper):
     ranges = [(0,0) for x in range(7)]
 
-    articleset_id = scraper.articleset_id
-    rows = Article.objects.filter(articlesets_set = articleset_id).extra({'date':"date(date)"}).values('date').annotate(created_count=Count('id')).filter(date__gte = date.today() - timedelta(days=210)) 
-    # returns a day and a count for each row
+    medium = Medium.get_or_create(scraper.get_scraper_class().medium_name)
+    print("getting n_scraped...")
+    n_scraped = scraper.n_scraped_articles(from_date = date.today() - timedelta(days = 365),
+                                           to_date = date.today(),
+                                           medium = medium)
     
-    if rows.count() < 21:
+    if len(n_scraped) < 21:
         raise ValueError("not enough data on the scraper")
     
-    for wkday,rows in enumerate(sort_weekdays(rows)):
-        numbers = [row['created_count'] for row in rows]
+    for wkday, numbers in enumerate(sort_weekdays(n_scraped)):
         med = median(numbers)
         ranges[wkday] = (med/1.5, med*1.5)
         
@@ -47,10 +50,10 @@ def scraper_ranges(scraper):
     return ranges
 
 def sort_weekdays(rows):
-    days = [[] for L in range(7)] #[[]] * 7 provides 7 of the same list, so don't edit
-    for row in rows:
-        wkday = row['date'].weekday()
-        days[wkday].append(row)        
+    days = [[] for L in range(7)]
+    for date, count in rows.items():
+        wkday = date.weekday()
+        days[wkday].append(count)        
     return days
         
 def median(numbers):
@@ -65,7 +68,9 @@ def median(numbers):
         return numbers[pointer]
 
 def set_scraper_stats():
-    for scraper in Scraper.objects.all():
+    print("starting...")
+    for scraper in Scraper.objects.filter(active = True):
+        print(scraper.label)
         try:
             ranges = scraper_ranges(scraper)
         except ValueError:
